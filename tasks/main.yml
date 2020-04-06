@@ -1,1 +1,57 @@
 # Defaults tasks for role kanboard
+- include_tasks: selinux.yml
+
+- include_role:
+    name: mysql
+
+- name: Creating mandatory (local) DB 
+  include_role: 
+    name: mysql
+    tasks_from: db
+  vars:
+    mysql_db_user: "{{ stikked_db_user }}"
+    mysql_db_pass: "{{ stikked_db_pass }}"
+    mysql_db_name: "{{ stikked_db_name }}"
+  tags:
+    - db
+
+- name: Configuring httpd
+  import_role:
+    name: httpd
+  vars:
+    httpd_tls: "{{ stikked_httpd_tls }}"
+
+- name: Configuring httpd vhost
+  template:
+    src: 02_stikked_vhost.conf.j2
+    dest: /etc/httpd/conf.d/02_stikked_vhost.conf
+  notify:
+    - restart_httpd
+
+- name: Configuring https
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/httpd/conf.d/{{ item }}"
+  notify:
+    - restart_httpd
+  with_items:
+    - ssl-stikked-vhost.conf
+  when: stikked_httpd_tls
+- import_role:
+    name: httpd
+    tasks_from: pki-tls
+  vars:
+    pki_hostname: "{{ stikked_httpd_hostname }}"
+  notify:
+    - restart_httpd
+  tags:
+    - tls
+  when: stikked_httpd_tls
+
+- name: Adding SCL php
+  include_role:
+    name: httpd
+    tasks_from: scl-php
+  tags:
+    - php
+

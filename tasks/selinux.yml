@@ -1,0 +1,10 @@
+- name: Enabling selinux booleans
+  seboolean:
+    name: "{{ item }}"
+    persistent: yes
+    state: yes
+  with_items:
+    - httpd_can_network_connect
+    - httpd_can_network_connect_db
+  when: ansible_selinux.status == "enabled"
+
